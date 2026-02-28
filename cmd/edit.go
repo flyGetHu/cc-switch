@@ -41,17 +41,17 @@ var editCmd = &cobra.Command{
 		}
 
 		if opus, _ := cmd.Flags().GetString("opus"); opus != "" {
-			p.Models.Opus = opus
+			p.Models.DefaultOpus = opus
 			changed = true
 		}
 
 		if sonnet, _ := cmd.Flags().GetString("sonnet"); sonnet != "" {
-			p.Models.Sonnet = sonnet
+			p.Models.DefaultSonnet = sonnet
 			changed = true
 		}
 
 		if haiku, _ := cmd.Flags().GetString("haiku"); haiku != "" {
-			p.Models.Haiku = haiku
+			p.Models.DefaultHaiku = haiku
 			changed = true
 		}
 
@@ -59,9 +59,9 @@ var editCmd = &cobra.Command{
 			fmt.Println("请指定要修改的选项:")
 			fmt.Println("  --api-key    API Key")
 			fmt.Println("  --base-url   Base URL")
-			fmt.Println("  --opus       Opus 模型")
-			fmt.Println("  --sonnet     Sonnet 模型")
-			fmt.Println("  --haiku      Haiku 模型")
+			fmt.Println("  --opus       Opus 模型 (default_opus)")
+			fmt.Println("  --sonnet     Sonnet 模型 (default_sonnet)")
+			fmt.Println("  --haiku      Haiku 模型 (default_haiku)")
 			return
 		}
 

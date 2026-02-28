@@ -20,9 +20,9 @@ func setupTestConfig(t *testing.T) string {
 				Name:    "Test Provider",
 				BaseURL: "https://api.test.com/anthropic",
 				Models: provider.ModelConfig{
-					Opus:   "test-opus",
-					Sonnet: "test-sonnet",
-					Haiku:  "test-haiku",
+					DefaultOpus:   "test-opus",
+					DefaultSonnet: "test-sonnet",
+					DefaultHaiku:  "test-haiku",
 				},
 				APIKey: "test-key",
 			},
@@ -109,9 +109,9 @@ func TestSave(t *testing.T) {
 				Name:    "Save Test",
 				BaseURL: "https://api.save-test.com",
 				Models: provider.ModelConfig{
-					Opus:   "save-opus",
-					Sonnet: "save-sonnet",
-					Haiku:  "save-haiku",
+					DefaultOpus:   "save-opus",
+					DefaultSonnet: "save-sonnet",
+					DefaultHaiku:  "save-haiku",
 				},
 				APIKey: "save-key",
 			},
@@ -152,9 +152,9 @@ func TestAddProvider(t *testing.T) {
 		Name:    "New Provider",
 		BaseURL: "https://api.new.com",
 		Models: provider.ModelConfig{
-			Opus:   "new-opus",
-			Sonnet: "new-sonnet",
-			Haiku:  "new-haiku",
+			DefaultOpus:   "new-opus",
+			DefaultSonnet: "new-sonnet",
+			DefaultHaiku:  "new-haiku",
 		},
 		APIKey: "new-key",
 	}
@@ -188,7 +188,7 @@ func TestRemoveProvider(t *testing.T) {
 	cfg.Providers["to-remove"] = provider.Provider{
 		Name:    "To Remove",
 		BaseURL: "https://api.remove.com",
-		Models:  provider.ModelConfig{Opus: "o", Sonnet: "s", Haiku: "h"},
+		Models:  provider.ModelConfig{DefaultOpus: "o", DefaultSonnet: "s", DefaultHaiku: "h"},
 	}
 	Save(cfg)
 
@@ -216,7 +216,7 @@ func TestSetCurrent(t *testing.T) {
 	cfg.Providers["another"] = provider.Provider{
 		Name:    "Another",
 		BaseURL: "https://api.another.com",
-		Models:  provider.ModelConfig{Opus: "o", Sonnet: "s", Haiku: "h"},
+		Models:  provider.ModelConfig{DefaultOpus: "o", DefaultSonnet: "s", DefaultHaiku: "h"},
 	}
 	Save(cfg)
 

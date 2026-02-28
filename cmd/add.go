@@ -52,6 +52,20 @@ var addCmd = &cobra.Command{
 		haikuModel, _ := reader.ReadString('\n')
 		haikuModel = strings.TrimSpace(haikuModel)
 
+		fmt.Print("SmallFast 模型 (可选，回车使用 default_haiku): ")
+		smallFastModel, _ := reader.ReadString('\n')
+		smallFastModel = strings.TrimSpace(smallFastModel)
+		if smallFastModel == "" {
+			smallFastModel = haikuModel
+		}
+
+		fmt.Print("Default 模型 (可选，回车使用 default_sonnet): ")
+		defaultModel, _ := reader.ReadString('\n')
+		defaultModel = strings.TrimSpace(defaultModel)
+		if defaultModel == "" {
+			defaultModel = sonnetModel
+		}
+
 		fmt.Print("API Key: ")
 		apiKey, _ := reader.ReadString('\n')
 		apiKey = strings.TrimSpace(apiKey)
@@ -60,9 +74,11 @@ var addCmd = &cobra.Command{
 			Name:    displayName,
 			BaseURL: baseURL,
 			Models: provider.ModelConfig{
-				Opus:   opusModel,
-				Sonnet: sonnetModel,
-				Haiku:  haikuModel,
+				DefaultOpus:   opusModel,
+				DefaultSonnet: sonnetModel,
+				DefaultHaiku:  haikuModel,
+				SmallFast:     smallFastModel,
+				DefaultModel:  defaultModel,
 			},
 			APIKey: apiKey,
 		}

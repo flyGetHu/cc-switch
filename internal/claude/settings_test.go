@@ -29,86 +29,118 @@ func TestSetSettingsPath(t *testing.T) {
 	SetSettingsPath("")
 }
 
-func TestReadSettings_NonExistent(t *testing.T) {
+func TestReadSettingsRaw_NonExistent(t *testing.T) {
 	tempDir := t.TempDir()
 	tempPath := filepath.Join(tempDir, "settings.json")
 
 	SetSettingsPath(tempPath)
 	defer SetSettingsPath("")
 
-	s, err := ReadSettings()
+	s, err := ReadSettingsRaw()
 	if err != nil {
-		t.Errorf("ReadSettings failed: %v", err)
+		t.Errorf("ReadSettingsRaw failed: %v", err)
 	}
 
-	if s.Env == nil {
-		t.Error("Env should not be nil")
+	if s == nil {
+		t.Error("Settings should not be nil")
 	}
 }
 
-func TestReadAndWriteSettings(t *testing.T) {
+func TestReadAndWriteSettingsRaw_PreserveUnknownFields(t *testing.T) {
 	tempDir := t.TempDir()
 	tempPath := filepath.Join(tempDir, "settings.json")
 
 	SetSettingsPath(tempPath)
 	defer SetSettingsPath("")
 
-	original := &Settings{
-		Env: map[string]string{
+	// 模拟包含未知字段的 settings.json
+	original := map[string]interface{}{
+		"env": map[string]interface{}{
 			"TEST_VAR": "test_value",
 		},
-		Permissions: Permissions{
-			Allow: []string{"read"},
-			Deny:  []string{"write"},
+		"permissions": map[string]interface{}{
+			"allow": []string{"read"},
+			"deny":  []string{"write"},
 		},
+		"apiProvider":   "anthropic",
+		"primaryApiKey": "sk-ant-key",
+		"unknownField": 123,
 	}
 
-	if err := WriteSettings(original); err != nil {
-		t.Fatalf("WriteSettings failed: %v", err)
+	if err := WriteSettingsRaw(original); err != nil {
+		t.Fatalf("WriteSettingsRaw failed: %v", err)
 	}
 
-	loaded, err := ReadSettings()
+	loaded, err := ReadSettingsRaw()
 	if err != nil {
-		t.Fatalf("ReadSettings failed: %v", err)
+		t.Fatalf("ReadSettingsRaw failed: %v", err)
 	}
 
-	if loaded.Env["TEST_VAR"] != "test_value" {
-		t.Errorf("Expected TEST_VAR 'test_value', got %s", loaded.Env["TEST_VAR"])
+	// 验证 env 字段
+	env, ok := loaded["env"].(map[string]interface{})
+	if !ok {
+		t.Fatal("env should be a map")
+	}
+	if env["TEST_VAR"] != "test_value" {
+		t.Errorf("Expected TEST_VAR 'test_value', got %v", env["TEST_VAR"])
 	}
 
-	if len(loaded.Permissions.Allow) != 1 || loaded.Permissions.Allow[0] != "read" {
+	// 验证 permissions 字段
+	perms, ok := loaded["permissions"].(map[string]interface{})
+	if !ok {
+		t.Fatal("permissions should be a map")
+	}
+	allow, ok := perms["allow"].([]interface{})
+	if !ok || len(allow) != 1 || allow[0] != "read" {
 		t.Errorf("Permissions.Allow not preserved correctly")
+	}
+
+	// 验证未知字段被保留
+	if loaded["apiProvider"] != "anthropic" {
+		t.Errorf("apiProvider not preserved: got %v", loaded["apiProvider"])
+	}
+	if loaded["primaryApiKey"] != "sk-ant-key" {
+		t.Errorf("primaryApiKey not preserved: got %v", loaded["primaryApiKey"])
+	}
+	if loaded["unknownField"] != float64(123) {
+		t.Errorf("unknownField not preserved: got %v", loaded["unknownField"])
 	}
 }
 
-func TestApplyProvider(t *testing.T) {
+func TestApplyProvider_PreserveOtherFields(t *testing.T) {
 	tempDir := t.TempDir()
 	tempPath := filepath.Join(tempDir, "settings.json")
 
 	SetSettingsPath(tempPath)
 	defer SetSettingsPath("")
 
-	original := &Settings{
-		Env: map[string]string{
-			"EXISTING_VAR": "value",
+	// 初始配置包含其他字段
+	original := map[string]interface{}{
+		"env": map[string]interface{}{
+			"EXISTING_VAR":     "value",
+			"ANOTHER_VAR":     "keep_this",
+			"ANTHROPIC_BASE_URL": "https://old-api.com",
 		},
-		Permissions: Permissions{
-			Allow: []string{},
-			Deny:  []string{},
+		"permissions": map[string]interface{}{
+			"allow": []string{"read"},
 		},
+		"apiProvider":   "anthropic",
+		"primaryApiKey": "sk-ant-key",
 	}
 
-	if err := WriteSettings(original); err != nil {
-		t.Fatalf("WriteSettings failed: %v", err)
+	if err := WriteSettingsRaw(original); err != nil {
+		t.Fatalf("WriteSettingsRaw failed: %v", err)
 	}
 
 	p := &provider.Provider{
 		Name:    "Test",
 		BaseURL: "https://api.test.com/anthropic",
 		Models: provider.ModelConfig{
-			Opus:   "test-opus",
-			Sonnet: "test-sonnet",
-			Haiku:  "test-haiku",
+			DefaultOpus:   "test-opus",
+			DefaultSonnet: "test-sonnet",
+			DefaultHaiku:  "test-haiku",
+			SmallFast:     "test-small-fast",
+			DefaultModel:  "test-default",
 		},
 		APIKey: "test-api-key",
 	}
@@ -117,29 +149,53 @@ func TestApplyProvider(t *testing.T) {
 		t.Fatalf("ApplyProvider failed: %v", err)
 	}
 
-	loaded, err := ReadSettings()
+	loaded, err := ReadSettingsRaw()
 	if err != nil {
-		t.Fatalf("ReadSettings failed: %v", err)
+		t.Fatalf("ReadSettingsRaw failed: %v", err)
 	}
 
-	if loaded.Env["ANTHROPIC_BASE_URL"] != p.BaseURL {
-		t.Errorf("Expected ANTHROPIC_BASE_URL %s, got %s", p.BaseURL, loaded.Env["ANTHROPIC_BASE_URL"])
-	}
-	if loaded.Env["ANTHROPIC_AUTH_TOKEN"] != p.APIKey {
-		t.Errorf("Expected ANTHROPIC_AUTH_TOKEN %s, got %s", p.APIKey, loaded.Env["ANTHROPIC_AUTH_TOKEN"])
-	}
-	if loaded.Env["ANTHROPIC_DEFAULT_OPUS_MODEL"] != p.Models.Opus {
-		t.Errorf("Expected ANTHROPIC_DEFAULT_OPUS_MODEL %s, got %s", p.Models.Opus, loaded.Env["ANTHROPIC_DEFAULT_OPUS_MODEL"])
-	}
-	if loaded.Env["ANTHROPIC_DEFAULT_SONNET_MODEL"] != p.Models.Sonnet {
-		t.Errorf("Expected ANTHROPIC_DEFAULT_SONNET_MODEL %s, got %s", p.Models.Sonnet, loaded.Env["ANTHROPIC_DEFAULT_SONNET_MODEL"])
-	}
-	if loaded.Env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] != p.Models.Haiku {
-		t.Errorf("Expected ANTHROPIC_DEFAULT_HAIKU_MODEL %s, got %s", p.Models.Haiku, loaded.Env["ANTHROPIC_DEFAULT_HAIKU_MODEL"])
+	// 验证服务商相关字段被更新
+	env, ok := loaded["env"].(map[string]interface{})
+	if !ok {
+		t.Fatal("env should be a map")
 	}
 
-	if loaded.Env["EXISTING_VAR"] != "value" {
+	if env["ANTHROPIC_BASE_URL"] != p.BaseURL {
+		t.Errorf("Expected ANTHROPIC_BASE_URL %s, got %v", p.BaseURL, env["ANTHROPIC_BASE_URL"])
+	}
+	if env["ANTHROPIC_AUTH_TOKEN"] != p.APIKey {
+		t.Errorf("Expected ANTHROPIC_AUTH_TOKEN %s, got %v", p.APIKey, env["ANTHROPIC_AUTH_TOKEN"])
+	}
+	if env["ANTHROPIC_DEFAULT_OPUS_MODEL"] != p.Models.DefaultOpus {
+		t.Errorf("Expected ANTHROPIC_DEFAULT_OPUS_MODEL %s, got %v", p.Models.DefaultOpus, env["ANTHROPIC_DEFAULT_OPUS_MODEL"])
+	}
+	if env["ANTHROPIC_DEFAULT_SONNET_MODEL"] != p.Models.DefaultSonnet {
+		t.Errorf("Expected ANTHROPIC_DEFAULT_SONNET_MODEL %s, got %v", p.Models.DefaultSonnet, env["ANTHROPIC_DEFAULT_SONNET_MODEL"])
+	}
+	if env["ANTHROPIC_DEFAULT_HAIKU_MODEL"] != p.Models.DefaultHaiku {
+		t.Errorf("Expected ANTHROPIC_DEFAULT_HAIKU_MODEL %s, got %v", p.Models.DefaultHaiku, env["ANTHROPIC_DEFAULT_HAIKU_MODEL"])
+	}
+	if env["ANTHROPIC_SMALL_FAST_MODEL"] != p.Models.SmallFast {
+		t.Errorf("Expected ANTHROPIC_SMALL_FAST_MODEL %s, got %v", p.Models.SmallFast, env["ANTHROPIC_SMALL_FAST_MODEL"])
+	}
+	if env["ANTHROPIC_MODEL"] != p.Models.DefaultModel {
+		t.Errorf("Expected ANTHROPIC_MODEL %s, got %v", p.Models.DefaultModel, env["ANTHROPIC_MODEL"])
+	}
+
+	// 验证其他非服务商字段被保留
+	if env["EXISTING_VAR"] != "value" {
 		t.Error("Existing env var should be preserved")
+	}
+	if env["ANOTHER_VAR"] != "keep_this" {
+		t.Error("ANOTHER_VAR should be preserved")
+	}
+
+	// 验证其他顶层字段被保留
+	if loaded["apiProvider"] != "anthropic" {
+		t.Errorf("apiProvider not preserved: got %v", loaded["apiProvider"])
+	}
+	if loaded["primaryApiKey"] != "sk-ant-key" {
+		t.Errorf("primaryApiKey not preserved: got %v", loaded["primaryApiKey"])
 	}
 }
 
@@ -150,16 +206,16 @@ func TestGetCurrentProvider(t *testing.T) {
 	SetSettingsPath(tempPath)
 	defer SetSettingsPath("")
 
-	settings := &Settings{
-		Env: map[string]string{
+	settings := map[string]interface{}{
+		"env": map[string]interface{}{
 			"ANTHROPIC_BASE_URL":   "https://api.test.com",
 			"ANTHROPIC_AUTH_TOKEN": "test-token",
 		},
-		Permissions: Permissions{},
+		"permissions": map[string]interface{}{},
 	}
 
-	if err := WriteSettings(settings); err != nil {
-		t.Fatalf("WriteSettings failed: %v", err)
+	if err := WriteSettingsRaw(settings); err != nil {
+		t.Fatalf("WriteSettingsRaw failed: %v", err)
 	}
 
 	baseURL, apiKey := GetCurrentProvider()
@@ -183,9 +239,9 @@ func TestValidateProvider(t *testing.T) {
 				BaseURL: "https://api.test.com",
 				APIKey:  "test-key",
 				Models: provider.ModelConfig{
-					Opus:   "opus",
-					Sonnet: "sonnet",
-					Haiku:  "haiku",
+					DefaultOpus:   "opus",
+					DefaultSonnet: "sonnet",
+					DefaultHaiku:  "haiku",
 				},
 			},
 			wantErr: false,
@@ -196,9 +252,9 @@ func TestValidateProvider(t *testing.T) {
 				BaseURL: "",
 				APIKey:  "test-key",
 				Models: provider.ModelConfig{
-					Opus:   "opus",
-					Sonnet: "sonnet",
-					Haiku:  "haiku",
+					DefaultOpus:   "opus",
+					DefaultSonnet: "sonnet",
+					DefaultHaiku:  "haiku",
 				},
 			},
 			wantErr: true,
@@ -209,9 +265,9 @@ func TestValidateProvider(t *testing.T) {
 				BaseURL: "https://api.test.com",
 				APIKey:  "",
 				Models: provider.ModelConfig{
-					Opus:   "opus",
-					Sonnet: "sonnet",
-					Haiku:  "haiku",
+					DefaultOpus:   "opus",
+					DefaultSonnet: "sonnet",
+					DefaultHaiku:  "haiku",
 				},
 			},
 			wantErr: true,
@@ -222,9 +278,9 @@ func TestValidateProvider(t *testing.T) {
 				BaseURL: "https://api.test.com",
 				APIKey:  "test-key",
 				Models: provider.ModelConfig{
-					Opus:   "",
-					Sonnet: "sonnet",
-					Haiku:  "haiku",
+					DefaultOpus:   "",
+					DefaultSonnet: "sonnet",
+					DefaultHaiku:  "haiku",
 				},
 			},
 			wantErr: true,
@@ -235,9 +291,9 @@ func TestValidateProvider(t *testing.T) {
 				BaseURL: "https://api.test.com",
 				APIKey:  "test-key",
 				Models: provider.ModelConfig{
-					Opus:   "opus",
-					Sonnet: "",
-					Haiku:  "haiku",
+					DefaultOpus:   "opus",
+					DefaultSonnet: "",
+					DefaultHaiku:  "haiku",
 				},
 			},
 			wantErr: true,
@@ -248,9 +304,9 @@ func TestValidateProvider(t *testing.T) {
 				BaseURL: "https://api.test.com",
 				APIKey:  "test-key",
 				Models: provider.ModelConfig{
-					Opus:   "opus",
-					Sonnet: "sonnet",
-					Haiku:  "",
+					DefaultOpus:   "opus",
+					DefaultSonnet: "sonnet",
+					DefaultHaiku:  "",
 				},
 			},
 			wantErr: true,

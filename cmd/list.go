@@ -34,8 +34,8 @@ var listCmd = &cobra.Command{
 
 			fmt.Printf("  %-10s %-15s %s%s\n", key, p.Name, apiKeyStatus, current)
 			fmt.Printf("             Base URL: %s\n", p.BaseURL)
-			fmt.Printf("             Opus: %s, Sonnet: %s, Haiku: %s\n",
-				p.Models.Opus, p.Models.Sonnet, p.Models.Haiku)
+			fmt.Printf("             Opus: %s, Sonnet: %s, Haiku: %s (default: %s)\n",
+				p.Models.DefaultOpus, p.Models.DefaultSonnet, p.Models.DefaultHaiku, p.Models.DefaultModel)
 			fmt.Println()
 		}
 	},

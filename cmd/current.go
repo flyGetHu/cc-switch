@@ -25,8 +25,8 @@ var currentCmd = &cobra.Command{
 
 		fmt.Printf("当前服务商: %s (%s)\n", cfg.Current, p.Name)
 		fmt.Printf("Base URL: %s\n", p.BaseURL)
-		fmt.Printf("Opus: %s, Sonnet: %s, Haiku: %s\n",
-			p.Models.Opus, p.Models.Sonnet, p.Models.Haiku)
+		fmt.Printf("Opus: %s, Sonnet: %s, Haiku: %s (default: %s)\n",
+			p.Models.DefaultOpus, p.Models.DefaultSonnet, p.Models.DefaultHaiku, p.Models.DefaultModel)
 
 		if p.APIKey == "" {
 			fmt.Println("API Key: 未配置")
