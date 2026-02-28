@@ -25,7 +25,7 @@ func TestGetPresets(t *testing.T) {
 			baseURL: "https://open.bigmodel.cn/api/anthropic",
 			opus:    "glm-5",
 			sonnet:  "glm-5",
-			haiku:   "glm-4.7-flash",
+			haiku:   "glm-5",
 		},
 		{
 			key:     "minimax",

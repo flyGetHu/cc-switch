@@ -21,7 +21,7 @@ func GetPresets() map[string]Provider {
 			Models: ModelConfig{
 				Opus:   "glm-5",
 				Sonnet: "glm-5",
-				Haiku:  "glm-4.7-flash",
+				Haiku:  "glm-5",
 			},
 		},
 		"minimax": {
