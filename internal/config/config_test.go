@@ -44,7 +44,10 @@ func setupTestConfig(t *testing.T) string {
 }
 
 func TestGetConfigPath(t *testing.T) {
-	path := GetConfigPath()
+	path, err := GetConfigPath()
+	if err != nil {
+		t.Fatalf("GetConfigPath failed: %v", err)
+	}
 	home, _ := os.UserHomeDir()
 	expected := filepath.Join(home, ".config", "cc-switch", "config.yaml")
 
@@ -57,15 +60,19 @@ func TestSetConfigPath(t *testing.T) {
 	testPath := "/tmp/test/config.yaml"
 	SetConfigPath(testPath)
 
-	if GetConfigPath() != testPath {
-		t.Errorf("Expected %s, got %s", testPath, GetConfigPath())
+	path, _ := GetConfigPath()
+	if path != testPath {
+		t.Errorf("Expected %s, got %s", testPath, path)
 	}
 
 	SetConfigPath("")
 }
 
 func TestGetBackupsDir(t *testing.T) {
-	dir := GetBackupsDir()
+	dir, err := GetBackupsDir()
+	if err != nil {
+		t.Fatalf("GetBackupsDir failed: %v", err)
+	}
 	home, _ := os.UserHomeDir()
 	expected := filepath.Join(home, ".config", "cc-switch", "backups")
 

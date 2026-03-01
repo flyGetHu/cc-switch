@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 
 	"cc-switch/internal/provider"
 
@@ -18,25 +19,36 @@ type Config struct {
 
 var configPath string
 
-func GetConfigPath() string {
+func GetConfigPath() (string, error) {
 	if configPath != "" {
-		return configPath
+		return configPath, nil
 	}
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".config", "cc-switch", "config.yaml")
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("获取用户主目录失败: %w", err)
+	}
+	return filepath.Join(home, ".config", "cc-switch", "config.yaml"), nil
 }
 
 func SetConfigPath(path string) {
 	configPath = path
 }
 
-func GetBackupsDir() string {
-	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".config", "cc-switch", "backups")
+func GetBackupsDir() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("获取用户主目录失败: %w", err)
+	}
+	return filepath.Join(home, ".config", "cc-switch", "backups"), nil
 }
 
 func Load() (*Config, error) {
-	data, err := os.ReadFile(GetConfigPath())
+	configPath, err := GetConfigPath()
+	if err != nil {
+		return nil, err
+	}
+
+	data, err := os.ReadFile(configPath)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return initDefaultConfig()
@@ -54,10 +66,15 @@ func Load() (*Config, error) {
 
 func initDefaultConfig() (*Config, error) {
 	presets := provider.GetPresets()
+	backupsDir, err := GetBackupsDir()
+	if err != nil {
+		return nil, err
+	}
+
 	cfg := &Config{
 		Providers:  presets,
 		Current:    "zhipu",
-		BackupsDir: GetBackupsDir(),
+		BackupsDir: backupsDir,
 	}
 
 	if err := Save(cfg); err != nil {
@@ -73,13 +90,17 @@ func Save(c *Config) error {
 		return err
 	}
 
-	cp := GetConfigPath()
+	cp, err := GetConfigPath()
+	if err != nil {
+		return err
+	}
+
 	configDir := filepath.Dir(cp)
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		return err
 	}
 
-	return os.WriteFile(cp, data, 0644)
+	return os.WriteFile(cp, data, 0600)
 }
 
 func GetCurrent() (*Config, *provider.Provider, error) {
@@ -119,9 +140,16 @@ func RemoveProvider(name string) error {
 	delete(cfg.Providers, name)
 
 	if cfg.Current == name {
+		// 获取所有 provider 名称并排序，确保确定性
+		names := make([]string, 0, len(cfg.Providers))
 		for k := range cfg.Providers {
-			cfg.Current = k
-			break
+			names = append(names, k)
+		}
+		sort.Strings(names)
+		if len(names) > 0 {
+			cfg.Current = names[0]
+		} else {
+			cfg.Current = ""
 		}
 	}
 

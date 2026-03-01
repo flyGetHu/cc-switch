@@ -52,7 +52,7 @@ func WriteSettingsRaw(s map[string]interface{}) error {
 		return err
 	}
 
-	return os.WriteFile(GetSettingsPath(), data, 0644)
+	return os.WriteFile(GetSettingsPath(), data, 0600)
 }
 
 // getEnvMap 从 settings 中获取 env map，如果不存在则创建

@@ -3,7 +3,9 @@ package cmd
 import (
 	"bufio"
 	"fmt"
+	"net/url"
 	"os"
+	"regexp"
 	"strings"
 
 	"cc-switch/internal/config"
@@ -32,6 +34,12 @@ var addCmd = &cobra.Command{
 			return
 		}
 
+		// 验证服务商标识格式：只允许字母、数字、下划线、连字符
+		if !regexp.MustCompile(`^[a-zA-Z0-9_-]+$`).MatchString(name) {
+			fmt.Println("错误: 服务商标识只能包含字母、数字、下划线和连字符")
+			return
+		}
+
 		fmt.Print("服务商名称 (如 我的提供商): ")
 		displayName, _ := reader.ReadString('\n')
 		displayName = strings.TrimSpace(displayName)
@@ -39,6 +47,12 @@ var addCmd = &cobra.Command{
 		fmt.Print("Base URL: ")
 		baseURL, _ := reader.ReadString('\n')
 		baseURL = strings.TrimSpace(baseURL)
+
+		// 验证 BaseURL 格式
+		if _, err := url.ParseRequestURI(baseURL); err != nil {
+			fmt.Printf("错误: Base URL 格式无效: %v\n", err)
+			return
+		}
 
 		fmt.Print("Opus 模型: ")
 		opusModel, _ := reader.ReadString('\n')

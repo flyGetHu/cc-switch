@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"time"
 
 	"cc-switch/internal/claude"
@@ -19,7 +20,11 @@ func CreateBackup() (string, error) {
 		return "", err
 	}
 
-	backupsDir := getBackupsDir()
+	backupsDir, err := getBackupsDir()
+	if err != nil {
+		return "", err
+	}
+
 	if err := os.MkdirAll(backupsDir, 0755); err != nil {
 		return "", err
 	}
@@ -28,7 +33,7 @@ func CreateBackup() (string, error) {
 	filename := fmt.Sprintf("settings-%s.json", timestamp)
 	backupPath := filepath.Join(backupsDir, filename)
 
-	if err := os.WriteFile(backupPath, data, 0644); err != nil {
+	if err := os.WriteFile(backupPath, data, 0600); err != nil {
 		return "", err
 	}
 
@@ -36,7 +41,10 @@ func CreateBackup() (string, error) {
 }
 
 func ListBackups() ([]string, error) {
-	backupsDir := getBackupsDir()
+	backupsDir, err := getBackupsDir()
+	if err != nil {
+		return nil, err
+	}
 
 	entries, err := os.ReadDir(backupsDir)
 	if err != nil {
@@ -53,9 +61,10 @@ func ListBackups() ([]string, error) {
 		}
 	}
 
-	for i, j := 0, len(backups)-1; i < j; i, j = i+1, j-1 {
-		backups[i], backups[j] = backups[j], backups[i]
-	}
+	// 按文件名（时间戳）升序排序，最新的在前面
+	sort.Slice(backups, func(i, j int) bool {
+		return backups[i] > backups[j]
+	})
 
 	return backups, nil
 }
@@ -66,7 +75,7 @@ func RestoreBackup(backupPath string) error {
 		return err
 	}
 
-	return os.WriteFile(getClaudeSettingsPath(), data, 0644)
+	return os.WriteFile(getClaudeSettingsPath(), data, 0600)
 }
 
 func GetLatestBackup() (string, error) {

@@ -43,6 +43,11 @@ func switchProvider(name string) error {
 		return fmt.Errorf("服务商 '%s' 未配置 API Key，请先使用 'cc-switch edit %s' 配置", name, name)
 	}
 
+	// 验证服务商配置
+	if err := claude.ValidateProvider(&p); err != nil {
+		return fmt.Errorf("配置验证失败: %w", err)
+	}
+
 	if _, err := backup.CreateBackup(); err != nil {
 		fmt.Fprintf(os.Stderr, "警告: 创建备份失败: %v\n", err)
 	}

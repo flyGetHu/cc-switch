@@ -46,7 +46,11 @@ var backupRestoreCmd = &cobra.Command{
 		var backupPath string
 
 		if len(args) > 0 {
-			backupsDir := config.GetBackupsDir()
+			backupsDir, err := config.GetBackupsDir()
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "获取备份目录失败: %v\n", err)
+				return
+			}
 			backupPath = filepath.Join(backupsDir, args[0])
 		} else {
 			var err error

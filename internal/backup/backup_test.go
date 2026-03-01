@@ -28,7 +28,7 @@ func setupTestBackupEnv(t *testing.T) (string, func()) {
 	oldGetBackupsDir := getBackupsDir
 	oldGetClaudeSettingsPath := getClaudeSettingsPath
 
-	getBackupsDir = func() string { return backupsDir }
+	getBackupsDir = func() (string, error) { return backupsDir, nil }
 	getClaudeSettingsPath = func() string { return settingsPath }
 
 	cleanup := func() {
@@ -67,7 +67,7 @@ func TestListBackups(t *testing.T) {
 	_, cleanup := setupTestBackupEnv(t)
 	defer cleanup()
 
-	backupsDir := getBackupsDir()
+	backupsDir, _ := getBackupsDir()
 
 	for i := 0; i < 3; i++ {
 		filename := filepath.Join(backupsDir, "settings-20060102-15040"+string(rune('0'+i))+".json")
@@ -93,7 +93,7 @@ func TestListBackups_Empty(t *testing.T) {
 
 	oldDir := getBackupsDir
 	defer func() { getBackupsDir = oldDir }()
-	getBackupsDir = func() string { return emptyDir }
+	getBackupsDir = func() (string, error) { return emptyDir, nil }
 
 	backups, err := ListBackups()
 	if err != nil {
@@ -109,7 +109,7 @@ func TestRestoreBackup(t *testing.T) {
 	_, cleanup := setupTestBackupEnv(t)
 	defer cleanup()
 
-	backupsDir := getBackupsDir()
+	backupsDir, _ := getBackupsDir()
 	settingsPath := getClaudeSettingsPath()
 
 	backupContent := `{"env": {"ANTHROPIC_AUTH_TOKEN": "restored-key"}}`
@@ -136,7 +136,7 @@ func TestGetLatestBackup(t *testing.T) {
 	_, cleanup := setupTestBackupEnv(t)
 	defer cleanup()
 
-	backupsDir := getBackupsDir()
+	backupsDir, _ := getBackupsDir()
 
 	files := []string{
 		"settings-20260101-100000.json",
@@ -168,7 +168,7 @@ func TestGetLatestBackup_NoBackups(t *testing.T) {
 
 	oldDir := getBackupsDir
 	defer func() { getBackupsDir = oldDir }()
-	getBackupsDir = func() string { return emptyDir }
+	getBackupsDir = func() (string, error) { return emptyDir, nil }
 
 	_, err := GetLatestBackup()
 	if err == nil {
